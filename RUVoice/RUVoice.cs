@@ -46,6 +46,7 @@ namespace RUVoice
         public static bool OnToggle(UnityModManager.ModEntry modEntry, bool value)
         {
             enabled = value;
+
             Main.pathWWW = Main.path.Replace("\\", "//");
             Main.PathAudioWWW = Main.pathAudio.Replace("\\", "//");
 
@@ -163,7 +164,7 @@ namespace RUVoice
                                     AudioPlayer dAudioPlayer = myDialogHUD.gameObject.AddComponent<AudioPlayer>() as AudioPlayer;
                                     dAudioPlayer.SetChar(audioChar);
                                     dAudioPlayer.SetAudioFile(mytext);
-                                    dAudioPlayer.SetAudioPitch();
+                                    dAudioPlayer.SetWhoop();
                                     dAudioPlayer.PlaySound();
                                     break;
                                 }
@@ -195,7 +196,6 @@ namespace RUVoice
                             AudioPlayer wAudioPlayer = __instance.gameObject.AddComponent<AudioPlayer>() as AudioPlayer;
                             wAudioPlayer.SetChar(audioChar);
                             wAudioPlayer.SetAudioFile(mytext);
-                            wAudioPlayer.SetAudioPitch();
                             wAudioPlayer.SetWhoop();
                             wAudioPlayer.PlaySound();
                         }
@@ -216,12 +216,31 @@ namespace RUVoice
             AudioSource myAudioSource;
             string myAudioFile;
             string fullPath;
-            float myAudioPitch;
+
+            public void Start()
+            {
+            }
 
             public void SetChar(CharacterComponent myChar)
             {
                 this.audioChar = myChar;
                 this.myAudioSource = this.audioChar.GetAudioSource(CharacterComponent.AudioSourceType.Character);
+                this.SetAudioPitch();
+            }
+
+            public void SetAudioPitch()
+            {
+                string searchKey = this.audioChar.name.ToLower().Trim();
+                if (Main.myPitch.ContainsKey(searchKey))
+                {
+                    this.myAudioSource.pitch = Main.myPitch[searchKey];
+                    Debug.Log("------------ Set Audio Pitch to: " + this.myAudioSource.pitch);
+                }
+                else
+                {
+                    Main.UpdatePitchDB();
+                    this.SetAudioPitch();
+                }
             }
 
             public void SetAudioFile(string text)
@@ -239,46 +258,28 @@ namespace RUVoice
                 }
             }
 
-            public void SetAudioPitch()
-            {
-                string searchKey = this.audioChar.name.ToLower().Trim();
-                if (Main.myPitch.ContainsKey(searchKey))
-                {
-                    this.myAudioPitch = Main.myPitch[searchKey];
-                }
-                else
-                {
-                    Main.UpdatePitchDB();
-                    this.SetAudioPitch();
-                }
-            }
-
             public void SetWhoop()
             {
                 this.myAudioSource.spatialBlend = 1;
                 //Debug.Log("---------- started AudioPlayer");
-                if (this.audioChar.IsPlayer())
+                if (this.audioChar.IsPlayer() || (this.audioChar.InDialog))
                 {
-                    //Debug.Log("---------------   Is Player: " + this.audioChar.name);
-                    this.myAudioSource.maxDistance = 60.0f;
+                    Debug.Log("---------------   Is Player: " + this.audioChar.name);
+                    this.myAudioSource.maxDistance = 80.0f;
                 }
                 else
                 {
                     if (this.audioChar.IsTeamMate())
                     {
-                        //Debug.Log("---------------   Is teammate: " + this.audioChar.name);
-                        this.myAudioSource.maxDistance = 50.0f;
+                        Debug.Log("---------------   Is teammate: " + this.audioChar.name);
+                        this.myAudioSource.maxDistance = 40.0f;
                     }
                     else
                     {
-                        //Debug.Log("---------------   Is something else: " + this.audioChar.name);
-                        this.myAudioSource.maxDistance = 30.0f;
+                        Debug.Log("---------------   Is something else: " + this.audioChar.name);
+                        this.myAudioSource.maxDistance = 25.0f;
                     }
                 }
-            }
-
-            public void Start()
-            {
             }
 
             public void PlaySound()
@@ -308,11 +309,6 @@ namespace RUVoice
                 {
                     this.myAudioSource.Stop();
                 }
-                //if (!this.audioChar.IsPlayer())
-                //{
-                this.myAudioSource.pitch = this.myAudioPitch;
-                //Debug.Log("---------------- Set Pitch to: " + Main.audioPitch);
-                //}
                 this.myAudioSource.clip = URL.GetAudioClip(false, true);
                 this.myAudioSource.Play();
                 //myAudioSource.PlayOneShot(URL.GetAudioClip(false, true));

@@ -174,6 +174,33 @@ namespace RUVoice
             }
         }
 
+        // patch the dialogue stop audio when closed
+        [HarmonyPatch(typeof(DialogEndNode), "Start")]
+        public class Start_DialogEndNode_Patch
+        {
+            [HarmonyPrefix]
+            static void Start(DialogEndNode __instance)
+            {
+                CharacterComponent audioChar;
+                CharacterComponent[] myChars = GameObject.FindObjectsOfType<CharacterComponent>();
+                for (int i = 0; i < myChars.Length; i++)
+                {
+                    if ((myChars[i].InDialog) && (!myChars[i].IsPlayer()))
+                    {
+                        audioChar = myChars[i];
+                        AudioSource myAudioSource = audioChar.GetAudioSource(CharacterComponent.AudioSourceType.Character);
+                        if (myAudioSource.isPlaying)
+                        {
+                            //myAudioSource.Stop();
+                            FadeOutClass myFadeOut = __instance.gameObject.AddComponent<FadeOutClass>() as FadeOutClass;
+                            myFadeOut.Fade(myAudioSource, 2.0f);
+                        }
+                        break;
+                    }
+                }
+            }
+        }
+
         // patch the whoop phrases
         [HarmonyPatch(typeof(WhoopNode), "Start")]
         public class Start_Whoop_Patch
@@ -192,11 +219,14 @@ namespace RUVoice
                         CharacterComponent audioChar = objectOverride.GetComponent<CharacterComponent>();
                         if (audioChar)
                         {
-                            AudioPlayer wAudioPlayer = __instance.gameObject.AddComponent<AudioPlayer>() as AudioPlayer;
-                            wAudioPlayer.SetChar(audioChar);
-                            wAudioPlayer.SetAudioFile(mytext);
-                            wAudioPlayer.SetWhoop();
-                            wAudioPlayer.PlaySound();
+                            if (!audioChar.InDialog)
+                            {
+                                AudioPlayer wAudioPlayer = __instance.gameObject.AddComponent<AudioPlayer>() as AudioPlayer;
+                                wAudioPlayer.SetChar(audioChar);
+                                wAudioPlayer.SetAudioFile(mytext);
+                                wAudioPlayer.SetWhoop();
+                                wAudioPlayer.PlaySound();
+                            }
                         }
                         else
                         {
@@ -215,6 +245,10 @@ namespace RUVoice
             AudioSource myAudioSource;
             string myAudioFile;
             string fullPath;
+            // testing
+            //private AudioHighPassFilter highPassFilter;
+            //private AudioLowPassFilter lowPassFilter;
+            private AudioDistortionFilter distortion;
 
             public void Start()
             {
@@ -224,6 +258,24 @@ namespace RUVoice
             {
                 this.audioChar = myChar;
                 this.myAudioSource = this.audioChar.GetAudioSource(CharacterComponent.AudioSourceType.Character);
+                //highPassFilter = this.myAudioSource.gameObject.GetComponent<AudioHighPassFilter>();
+                //lowPassFilter = this.myAudioSource.gameObject.GetComponent<AudioLowPassFilter>();
+                distortion = this.myAudioSource.gameObject.GetComponent<AudioDistortionFilter>();
+                //if (!highPassFilter)
+                //{
+                //    highPassFilter = this.myAudioSource.gameObject.AddComponent<AudioHighPassFilter>();
+                //}
+                //if (!lowPassFilter)
+                //{
+                //    lowPassFilter = this.myAudioSource.gameObject.AddComponent<AudioLowPassFilter>();
+                //}
+                if (!distortion)
+                {
+                    distortion = this.myAudioSource.gameObject.AddComponent<AudioDistortionFilter>();
+                }
+                //highPassFilter.cutoffFrequency = 5000;
+                //lowPassFilter.cutoffFrequency = 1000;
+                distortion.distortionLevel = 0.1f;
                 this.SetAudioPitch();
             }
 
@@ -316,6 +368,30 @@ namespace RUVoice
                 //audioContainer.clip = URL.GetAudioClip(false, true);
                 //audioContainer.volume = 1.0f;
                 //audioContainer.Play();
+            }
+        }
+
+        // class to fade out dialogue audio
+        public class FadeOutClass : MonoBehaviour
+        {
+            AudioSource mySource;
+            float fadeTime;
+            public void Fade(AudioSource audioSource, float time)
+            {
+                this.mySource = audioSource;
+                this.fadeTime = time;
+                StartCoroutine(FadeOut());
+            }
+            IEnumerator FadeOut()
+            {
+                float startVolume = mySource.volume;
+                while (mySource.volume > 0)
+                {
+                    mySource.volume -= startVolume * Time.deltaTime / fadeTime;
+                    yield return null;
+                }
+                mySource.Stop();
+                mySource.volume = startVolume;
             }
         }
     }

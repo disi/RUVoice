@@ -108,7 +108,6 @@ namespace RUVoice
                 string searchKey = iChar.name.ToLower().Trim();
                 if (!myPitch.ContainsKey(searchKey))
                 {
-                    //UnityEngine.Random.seed = System.DateTime.Now.Millisecond;
                     float pitch = 1.0f + UnityEngine.Random.Range(-Main.myPitchChange, Main.myPitchChange);
                     Main.myPitch.Add(searchKey, pitch);
                     writer.WriteLine(searchKey + "`" + pitch.ToString());
@@ -234,7 +233,7 @@ namespace RUVoice
                 if (Main.myPitch.ContainsKey(searchKey))
                 {
                     this.myAudioSource.pitch = Main.myPitch[searchKey];
-                    Debug.Log("------------ Set Audio Pitch to: " + this.myAudioSource.pitch);
+                    //Debug.Log("------------ Set Audio Pitch to: " + this.myAudioSource.pitch);
                 }
                 else
                 {
@@ -264,19 +263,19 @@ namespace RUVoice
                 //Debug.Log("---------- started AudioPlayer");
                 if (this.audioChar.IsPlayer() || (this.audioChar.InDialog))
                 {
-                    Debug.Log("---------------   Is Player: " + this.audioChar.name);
+                    //Debug.Log("---------------   Is Player: " + this.audioChar.name);
                     this.myAudioSource.maxDistance = 80.0f;
                 }
                 else
                 {
                     if (this.audioChar.IsTeamMate())
                     {
-                        Debug.Log("---------------   Is teammate: " + this.audioChar.name);
+                        //Debug.Log("---------------   Is teammate: " + this.audioChar.name);
                         this.myAudioSource.maxDistance = 40.0f;
                     }
                     else
                     {
-                        Debug.Log("---------------   Is something else: " + this.audioChar.name);
+                        //Debug.Log("---------------   Is something else: " + this.audioChar.name);
                         this.myAudioSource.maxDistance = 25.0f;
                     }
                 }

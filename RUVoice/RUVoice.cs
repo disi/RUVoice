@@ -337,7 +337,7 @@ namespace RUVoice
             {
                 //Debug.Log("---------- myChar component: " + audioChar.ToString());
                 //Debug.Log("----------------  " + audioChar.GetAudioSource(CharacterComponent.AudioSourceType.Character).outputAudioMixerGroup.name);
-                if (this.audioChar)
+                if ((this.audioChar) && (this.audioChar.IsHuman()))
                 {
                     if (this.myAudioSource)
                     {

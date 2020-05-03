@@ -27,6 +27,12 @@ namespace RUVoice
         public static Single myVolumeChange = 1.3f;
         // maximum pause in dialogue speech
         public static float maxSilenceUpdates = 0.5f;
+        // highpassfilter value
+        public static float highPassFilterValue = 400.0f;
+        // lowpassfilter value
+        public static float lowPassFilterValue = 5000.0f;
+        // distortionfilter value
+        public static float distortionFilterValue = 0.1f;
 
         // Load mod
         public static bool Load(UnityModManager.ModEntry modEntry)
@@ -250,8 +256,8 @@ namespace RUVoice
             string myAudioFile;
             string fullPath;
             // testing
-            //private AudioHighPassFilter highPassFilter;
-            //private AudioLowPassFilter lowPassFilter;
+            private AudioHighPassFilter highPassFilter;
+            private AudioLowPassFilter lowPassFilter;
             private AudioDistortionFilter distortion;
 
             public void Start()
@@ -262,24 +268,26 @@ namespace RUVoice
             {
                 this.audioChar = myChar;
                 this.myAudioSource = this.audioChar.GetAudioSource(CharacterComponent.AudioSourceType.Character);
-                //highPassFilter = this.myAudioSource.gameObject.GetComponent<AudioHighPassFilter>();
-                //lowPassFilter = this.myAudioSource.gameObject.GetComponent<AudioLowPassFilter>();
+                highPassFilter = this.myAudioSource.gameObject.GetComponent<AudioHighPassFilter>();
+                lowPassFilter = this.myAudioSource.gameObject.GetComponent<AudioLowPassFilter>();
                 distortion = this.myAudioSource.gameObject.GetComponent<AudioDistortionFilter>();
-                //if (!highPassFilter)
-                //{
-                //    highPassFilter = this.myAudioSource.gameObject.AddComponent<AudioHighPassFilter>();
-                //}
-                //if (!lowPassFilter)
-                //{
-                //    lowPassFilter = this.myAudioSource.gameObject.AddComponent<AudioLowPassFilter>();
-                //}
+                if (!highPassFilter)
+                {
+                    highPassFilter = this.myAudioSource.gameObject.AddComponent<AudioHighPassFilter>();
+                }
+                if (!lowPassFilter)
+                {
+                    lowPassFilter = this.myAudioSource.gameObject.AddComponent<AudioLowPassFilter>();
+                }
                 if (!distortion)
                 {
                     distortion = this.myAudioSource.gameObject.AddComponent<AudioDistortionFilter>();
                 }
-                //highPassFilter.cutoffFrequency = 5000;
-                //lowPassFilter.cutoffFrequency = 1000;
-                distortion.distortionLevel = 0.1f;
+                highPassFilter.cutoffFrequency = Main.highPassFilterValue;
+                lowPassFilter.cutoffFrequency = Main.lowPassFilterValue;
+                lowPassFilter.lowpassResonanceQ = 1.0f;
+                highPassFilter.cutoffFrequency = 1.0f;
+                distortion.distortionLevel = Main.distortionFilterValue;
                 this.SetAudioPitch();
                 this.SetAudioVolume();
             }
@@ -417,6 +425,7 @@ namespace RUVoice
 
             // set this high, so speech is not interrupted at the beginning
             public float updateStep = 5.0f;
+            // 1024 audio samples are ~80ms in 44100Hz audio
             public int sampleDataLength = 2;
             private float currentUpdateTime = 0f;
             private float clipLoudness;
@@ -439,14 +448,14 @@ namespace RUVoice
                         if (!this.isPaused)
                         {
                             currentUpdateTime = 0f;
-                            //I read 1024 samples, which is about 80 ms on a 44khz stereo clip, beginning at the current sample position of the clip.
+                            // audio data has only one channel 0
                             this.myAudioSource.GetOutputData(clipSampleData, 0);
                             this.clipLoudness = 0f;
                             foreach (float sample in clipSampleData)
                             {
                                 this.clipLoudness += Mathf.Abs(sample);
                             }
-                            if ((this.myAudioSource.isPlaying) && (this.clipLoudness == 0))
+                            if (this.clipLoudness == 0)
                             {
                                 this.updateStep = UnityEngine.Random.Range(0.1f, Main.maxSilenceUpdates);
                                 this.myAudioSource.Pause();

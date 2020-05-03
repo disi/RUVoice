@@ -23,8 +23,10 @@ namespace RUVoice
         public static string pitchDBFile = "_ru_text_pitch_DB.csv";
         // 1.0f + myPitchChange, sane levels -+0.07f
         public static Single myPitchChange = 0.06f;
-        // 1.0f +/- myVolumeChange for Aggressive to Passive
+        // myVolumeChange-[0-6]/10 for Aggressive to Passive
         public static Single myVolumeChange = 1.3f;
+        // maximum pause in dialogue speech
+        public static float maxSilenceUpdates = 0.5f;
 
         // Load mod
         public static bool Load(UnityModManager.ModEntry modEntry)
@@ -297,6 +299,7 @@ namespace RUVoice
                 }
             }
 
+            // set audio volume depending on character AI
             public void SetAudioVolume()
             {
                 CharacterProto charProto = this.audioChar.Character.CharProto;
@@ -304,32 +307,32 @@ namespace RUVoice
                 switch (charProto.aiBehavior)
                 {
                     case CharacterProto.AIBehavior.Aggressive:
-                        Debug.Log("-------------- Aggressive: " + this.audioChar);
+                        //Debug.Log("-------------- Aggressive: " + this.audioChar);
                         this.myAudioSource.volume = Main.myVolumeChange - (0 / 10);
                         break;
                     case CharacterProto.AIBehavior.Clawed:
-                        Debug.Log("-------------- Clawed: " + this.audioChar);
+                        //Debug.Log("-------------- Clawed: " + this.audioChar);
                         this.myAudioSource.volume = Main.myVolumeChange - (1 / 10);
                         break;
                     case CharacterProto.AIBehavior.Defence:
-                        Debug.Log("-------------- Defence: " + this.audioChar);
+                        //Debug.Log("-------------- Defence: " + this.audioChar);
                         this.myAudioSource.volume = Main.myVolumeChange - (2 / 10);
                         break;
                     case CharacterProto.AIBehavior.Escape:
-                        Debug.Log("-------------- Escape: " + this.audioChar);
+                        //Debug.Log("-------------- Escape: " + this.audioChar);
                         this.myAudioSource.volume = Main.myVolumeChange - (3 / 10);
                         break;
                     case CharacterProto.AIBehavior.Passive:
-                        Debug.Log("-------------- Passive: " + this.audioChar);
+                        //Debug.Log("-------------- Passive: " + this.audioChar);
                         this.myAudioSource.volume = Main.myVolumeChange - (4 / 10);
                         break;
                     case CharacterProto.AIBehavior.Avoiding:
-                        Debug.Log("-------------- Avoiding: " + this.audioChar);
-                        this.myAudioSource.volume = Main.myVolumeChange - (6 / 10);
+                        //Debug.Log("-------------- Avoiding: " + this.audioChar);
+                        this.myAudioSource.volume = Main.myVolumeChange - (5 / 10);
                         break;
                     case CharacterProto.AIBehavior.Suicidal:
-                        Debug.Log("-------------- Suicidal: " + this.audioChar);
-                        this.myAudioSource.volume = Main.myVolumeChange - (5 / 10);
+                        //Debug.Log("-------------- Suicidal: " + this.audioChar);
+                        this.myAudioSource.volume = Main.myVolumeChange - (6 / 10);
                         break;
                 }
             }
@@ -349,6 +352,7 @@ namespace RUVoice
                 }
             }
 
+            // set the distance, the sound should be audible
             public void SetWhoop()
             {
                 this.myAudioSource.spatialBlend = 1;
@@ -401,6 +405,7 @@ namespace RUVoice
                     this.myAudioSource.Stop();
                 }
                 this.myAudioSource.clip = URL.GetAudioClip(false, true);
+                //Debug.Log("---------- Audio channels in clip: " + this.myAudioSource.clip.channels);
                 this.myAudioSource.Play();
                 //myAudioSource.PlayOneShot(URL.GetAudioClip(false, true));
                 //audioChar.PlaySound(URL.GetAudioClip(false, true), 1.0f, CharacterComponent.AudioSourceType.Character);
@@ -408,6 +413,61 @@ namespace RUVoice
                 //audioContainer.clip = URL.GetAudioClip(false, true);
                 //audioContainer.volume = 1.0f;
                 //audioContainer.Play();
+            }
+
+            // set this high, so speech is not interrupted at the beginning
+            public float updateStep = 5.0f;
+            public int sampleDataLength = 2;
+            private float currentUpdateTime = 0f;
+            private float clipLoudness;
+            private float[] clipSampleData;
+            private bool isPaused = false;
+
+            void Awake()
+            {
+                this.clipSampleData = new float[this.sampleDataLength];
+            }
+
+            // if playing, extend random silence in audio playback for dialogues
+            void Update()
+            {
+                if ((this.myAudioSource) && (this.audioChar.InDialog))
+                {
+                    this.currentUpdateTime += Time.deltaTime;
+                    if (currentUpdateTime >= this.updateStep)
+                    {
+                        if (!this.isPaused)
+                        {
+                            currentUpdateTime = 0f;
+                            //I read 1024 samples, which is about 80 ms on a 44khz stereo clip, beginning at the current sample position of the clip.
+                            this.myAudioSource.GetOutputData(clipSampleData, 0);
+                            this.clipLoudness = 0f;
+                            foreach (float sample in clipSampleData)
+                            {
+                                this.clipLoudness += Mathf.Abs(sample);
+                            }
+                            if ((this.myAudioSource.isPlaying) && (this.clipLoudness == 0))
+                            {
+                                this.updateStep = UnityEngine.Random.Range(0.1f, Main.maxSilenceUpdates);
+                                this.myAudioSource.Pause();
+                                this.isPaused = true;
+                                Debug.Log("!------------------- AudioSource paused " + audioChar.name + ", update in: " + this.updateStep);
+                            }
+                            else
+                            {
+                                this.updateStep = 5.0f;
+                            }
+                        }
+                        else
+                        {
+                            this.myAudioSource.UnPause();
+                            currentUpdateTime = 0f;
+                            this.updateStep = 5.0f;
+                            this.isPaused = false;
+                            //Debug.Log("!------------------- AudioSource " + audioChar.name + " Unpaused!");
+                        }
+                    }
+                }
             }
         }
 

@@ -27,11 +27,11 @@ namespace RUVoice
         public static Single myVolumeChange = 1.3f;
         // maximum pause in dialogue speech
         public static float maxSilenceUpdates = 0.5f;
-        // highpassfilter value
-        public static float highPassFilterValue = 400.0f;
-        // lowpassfilter value
-        public static float lowPassFilterValue = 5000.0f;
-        // distortionfilter value
+        // highpassfilter value the lowest frequency
+        public static float highPassFilterValue = 200.0f;
+        // lowpassfilter value the highest frequency
+        public static float lowPassFilterValue = 6000.0f;
+        // distortionfilter value 0.0f - 10.0f
         public static float distortionFilterValue = 0.1f;
 
         // Load mod

@@ -6,33 +6,25 @@ using System.IO;
 using System.Collections.Generic;
 using System;
 using System.Collections;
+using System.Xml.Serialization;
 
 namespace RUVoice
 {
-    static class Main
+    public static class Main
     {
         // static variables
         public static bool enabled;
         public static Dictionary<string, string> myTexts = new Dictionary<string, string>();
         public static Dictionary<string, float> myPitch = new Dictionary<string, float>();
         public static string path = Environment.CurrentDirectory;
+        public static string pathMod = Main.path + "\\Mods\\RUVoice\\";
+        public static string xmlSettingsFile = "_ru_Settings.xml";
+        public static RUVoiceSettings ruVoiceSettings;
         public static string pathAudio = "\\Mods\\RUVoice\\audio\\";
         public static string pathWWW;
         public static string PathAudioWWW;
         public static string audioDBFile = "_ru_text_audio_DB.csv";
         public static string pitchDBFile = "_ru_text_pitch_DB.csv";
-        // 1.0f + myPitchChange, sane levels -+0.07f
-        public static Single myPitchChange = 0.06f;
-        // myVolumeChange-[0-6]/10 for Aggressive to Passive
-        public static Single myVolumeChange = 1.3f;
-        // maximum pause in dialogue speech
-        public static float maxSilenceUpdates = 0.5f;
-        // highpassfilter value the lowest frequency
-        public static float highPassFilterValue = 200.0f;
-        // lowpassfilter value the highest frequency
-        public static float lowPassFilterValue = 6000.0f;
-        // distortionfilter value 0.0f - 10.0f
-        public static float distortionFilterValue = 0.1f;
 
         // Load mod
         public static bool Load(UnityModManager.ModEntry modEntry)
@@ -60,10 +52,25 @@ namespace RUVoice
             Main.pathWWW = Main.path.Replace("\\", "//");
             Main.PathAudioWWW = Main.pathAudio.Replace("\\", "//");
 
+            Main.ruVoiceSettings = Main.LoadXML();
             Main.LoadTextDB();
             Main.LoadPitchDB();
 
             return true; // If true, the mod will switch the state. If not, the state will not change.
+        }
+
+        // load the XML settings
+        public static RUVoiceSettings LoadXML()
+        {
+            if (File.Exists(Main.pathMod + Main.xmlSettingsFile))
+            {
+                return XmlOperation.Deserialize<RUVoiceSettings>(Main.pathMod + Main.xmlSettingsFile);
+            } else
+            {
+                RUVoiceSettings myRUVoiceSettings = new RUVoiceSettings();
+                XmlOperation.Serialize(myRUVoiceSettings, Main.pathMod + Main.xmlSettingsFile);
+                return myRUVoiceSettings;
+            }
         }
 
         // load texts DB
@@ -118,7 +125,7 @@ namespace RUVoice
                 string searchKey = iChar.name.ToLower().Trim();
                 if (!myPitch.ContainsKey(searchKey))
                 {
-                    float pitch = 1.0f + UnityEngine.Random.Range(-Main.myPitchChange, Main.myPitchChange);
+                    float pitch = 1.0f + UnityEngine.Random.Range(-Main.ruVoiceSettings.pitchChange, Main.ruVoiceSettings.pitchChange);
                     Main.myPitch.Add(searchKey, pitch);
                     writer.WriteLine(searchKey + "`" + pitch.ToString());
                     Debug.Log("----------------- Added Pitch to file:" + searchKey + " " + pitch);
@@ -250,15 +257,15 @@ namespace RUVoice
         // audio player
         public class AudioPlayer : MonoBehaviour
         {
-            
+
             CharacterComponent audioChar;
             AudioSource myAudioSource;
             string myAudioFile;
             string fullPath;
             // testing
-            private AudioHighPassFilter highPassFilter;
-            private AudioLowPassFilter lowPassFilter;
-            private AudioDistortionFilter distortion;
+            AudioHighPassFilter highPassFilter;
+            AudioLowPassFilter lowPassFilter;
+            AudioDistortionFilter distortion;
 
             public void Start()
             {
@@ -283,11 +290,11 @@ namespace RUVoice
                 {
                     distortion = this.myAudioSource.gameObject.AddComponent<AudioDistortionFilter>();
                 }
-                highPassFilter.cutoffFrequency = Main.highPassFilterValue;
-                lowPassFilter.cutoffFrequency = Main.lowPassFilterValue;
-                lowPassFilter.lowpassResonanceQ = 1.0f;
-                highPassFilter.cutoffFrequency = 1.0f;
-                distortion.distortionLevel = Main.distortionFilterValue;
+                highPassFilter.cutoffFrequency = Main.ruVoiceSettings.highPassFilterValue;
+                lowPassFilter.cutoffFrequency = Main.ruVoiceSettings.lowPassFilterValue;
+                lowPassFilter.lowpassResonanceQ = Main.ruVoiceSettings.lowpassResonanceQValue;
+                highPassFilter.cutoffFrequency = Main.ruVoiceSettings.highPassFilterCutoffFrequencyValue;
+                distortion.distortionLevel = Main.ruVoiceSettings.distortionFilterValue;
                 this.SetAudioPitch();
                 this.SetAudioVolume();
             }
@@ -316,31 +323,31 @@ namespace RUVoice
                 {
                     case CharacterProto.AIBehavior.Aggressive:
                         //Debug.Log("-------------- Aggressive: " + this.audioChar);
-                        this.myAudioSource.volume = Main.myVolumeChange - (0 / 10);
+                        this.myAudioSource.volume = Main.ruVoiceSettings.volumeChange - (0 / 10);
                         break;
                     case CharacterProto.AIBehavior.Clawed:
                         //Debug.Log("-------------- Clawed: " + this.audioChar);
-                        this.myAudioSource.volume = Main.myVolumeChange - (1 / 10);
+                        this.myAudioSource.volume = Main.ruVoiceSettings.volumeChange - (1 / 10);
                         break;
                     case CharacterProto.AIBehavior.Defence:
                         //Debug.Log("-------------- Defence: " + this.audioChar);
-                        this.myAudioSource.volume = Main.myVolumeChange - (2 / 10);
+                        this.myAudioSource.volume = Main.ruVoiceSettings.volumeChange - (2 / 10);
                         break;
                     case CharacterProto.AIBehavior.Escape:
                         //Debug.Log("-------------- Escape: " + this.audioChar);
-                        this.myAudioSource.volume = Main.myVolumeChange - (3 / 10);
+                        this.myAudioSource.volume = Main.ruVoiceSettings.volumeChange - (3 / 10);
                         break;
                     case CharacterProto.AIBehavior.Passive:
                         //Debug.Log("-------------- Passive: " + this.audioChar);
-                        this.myAudioSource.volume = Main.myVolumeChange - (4 / 10);
+                        this.myAudioSource.volume = Main.ruVoiceSettings.volumeChange - (4 / 10);
                         break;
                     case CharacterProto.AIBehavior.Avoiding:
                         //Debug.Log("-------------- Avoiding: " + this.audioChar);
-                        this.myAudioSource.volume = Main.myVolumeChange - (5 / 10);
+                        this.myAudioSource.volume = Main.ruVoiceSettings.volumeChange - (5 / 10);
                         break;
                     case CharacterProto.AIBehavior.Suicidal:
                         //Debug.Log("-------------- Suicidal: " + this.audioChar);
-                        this.myAudioSource.volume = Main.myVolumeChange - (6 / 10);
+                        this.myAudioSource.volume = Main.ruVoiceSettings.volumeChange - (6 / 10);
                         break;
                 }
             }
@@ -368,19 +375,19 @@ namespace RUVoice
                 if (this.audioChar.IsPlayer() || (this.audioChar.InDialog))
                 {
                     //Debug.Log("---------------   Is Player: " + this.audioChar.name);
-                    this.myAudioSource.maxDistance = 80.0f;
+                    this.myAudioSource.maxDistance = Main.ruVoiceSettings.maxDistancePlayerValue;
                 }
                 else
                 {
                     if (this.audioChar.IsTeamMate())
                     {
                         //Debug.Log("---------------   Is teammate: " + this.audioChar.name);
-                        this.myAudioSource.maxDistance = 40.0f;
+                        this.myAudioSource.maxDistance = Main.ruVoiceSettings.maxDistanceTeamValue;
                     }
                     else
                     {
                         //Debug.Log("---------------   Is something else: " + this.audioChar.name);
-                        this.myAudioSource.maxDistance = 25.0f;
+                        this.myAudioSource.maxDistance = Main.ruVoiceSettings.maxDistanceOtherValue;
                     }
                 }
             }
@@ -426,7 +433,7 @@ namespace RUVoice
             // set this high, so speech is not interrupted at the beginning
             public float updateStep = 5.0f;
             // 1024 audio samples are ~80ms in 44100Hz audio
-            public int sampleDataLength = 2;
+            public int sampleDataLength = Main.ruVoiceSettings.maxSilenceSamples;
             private float currentUpdateTime = 0f;
             private float clipLoudness;
             private float[] clipSampleData;
@@ -457,7 +464,7 @@ namespace RUVoice
                             }
                             if (this.clipLoudness == 0)
                             {
-                                this.updateStep = UnityEngine.Random.Range(0.1f, Main.maxSilenceUpdates);
+                                this.updateStep = UnityEngine.Random.Range(0.1f, Main.ruVoiceSettings.maxSilenceUpdates);
                                 this.myAudioSource.Pause();
                                 this.isPaused = true;
                                 Debug.Log("!------------------- AudioSource paused " + audioChar.name + ", update in: " + this.updateStep);
@@ -501,6 +508,56 @@ namespace RUVoice
                 }
                 mySource.Stop();
                 mySource.volume = startVolume;
+            }
+        }
+
+        // helper class to do xml operations
+        public static class XmlOperation
+        {
+            public static void Serialize(object item, string path)
+            {
+                XmlSerializer serializer = new XmlSerializer(item.GetType());
+                StreamWriter writer = new StreamWriter(path);
+                serializer.Serialize(writer.BaseStream, item);
+                writer.Close();
+            }
+            public static T Deserialize<T>(string path)
+            {
+                XmlSerializer serializer = new XmlSerializer(typeof(T));
+                StreamReader reader = new StreamReader(path);
+                T deserialized = (T)serializer.Deserialize(reader.BaseStream);
+                reader.Close();
+                return deserialized;
+            }
+        }
+
+        // my settings class
+        [Serializable]
+        public class RUVoiceSettings
+        {
+            // 1.0f + myPitchChange, sane levels -+0.07f
+            public Single pitchChange = 0.05f;
+            // myVolumeChange-[0-6]/10 for Aggressive to Passive
+            public Single volumeChange = 1.3f;
+            // maximum pause in dialogue speech
+            public float maxSilenceUpdates = 0.5f;
+            // 2 is OK, up to 1024 for 80ms
+            public int maxSilenceSamples = 2;
+            // highpassfilter value the lowest frequency
+            public float highPassFilterValue = 0.0f;
+            public float highPassFilterCutoffFrequencyValue = 1.0f;
+            // lowpassfilter value the highest frequency
+            public float lowPassFilterValue = 22000.0f;
+            public float lowpassResonanceQValue = 1.0f;
+            // distortionfilter value 0.0f - 10.0f
+            public float distortionFilterValue = 0.2f;
+            // max sound cutoff distances
+            public float maxDistancePlayerValue = 80.0f;
+            public float maxDistanceTeamValue = 40.0f;
+            public float maxDistanceOtherValue = 25.0f;
+
+            public RUVoiceSettings()
+            {
             }
         }
     }

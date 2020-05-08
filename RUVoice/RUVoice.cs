@@ -20,7 +20,7 @@ namespace RUVoice
         public static string pathMod = Main.path + "\\Mods\\RUVoice\\";
         public static string xmlSettingsFile = "_ru_Settings.xml";
         public static RUVoiceSettings ruVoiceSettings;
-        public static string pathAudio = "\\Mods\\RUVoice\\audio\\";
+        public static string pathAudio = "\\audio\\";
         public static string pathWWW;
         public static string PathAudioWWW;
         public static string audioDBFile = "_ru_text_audio_DB.csv";
@@ -49,7 +49,7 @@ namespace RUVoice
         {
             enabled = value;
 
-            Main.pathWWW = Main.path.Replace("\\", "//");
+            Main.pathWWW = Main.pathMod.Replace("\\", "//");
             Main.PathAudioWWW = Main.pathAudio.Replace("\\", "//");
 
             Main.ruVoiceSettings = Main.LoadXML();
@@ -76,9 +76,9 @@ namespace RUVoice
         // load texts DB
         public static bool LoadTextDB()
         {
-            if (File.Exists(Main.path + pathAudio + audioDBFile))
+            if (File.Exists(Main.pathMod + audioDBFile))
             {
-                StreamReader reader = new StreamReader(File.OpenRead(Main.path + pathAudio + audioDBFile));
+                StreamReader reader = new StreamReader(File.OpenRead(Main.pathMod + audioDBFile));
                 while (!reader.EndOfStream)
                 {
                     string line = reader.ReadLine();
@@ -97,9 +97,9 @@ namespace RUVoice
         // load Pitch DB
         public static bool LoadPitchDB()
         {
-            if (File.Exists(Main.path + pathAudio + pitchDBFile))
+            if (File.Exists(Main.pathMod + pitchDBFile))
             {
-                StreamReader reader = new StreamReader(File.OpenRead(Main.path + pathAudio + pitchDBFile));
+                StreamReader reader = new StreamReader(File.OpenRead(Main.pathMod + pitchDBFile));
                 while (!reader.EndOfStream)
                 {
                     string line = reader.ReadLine();
@@ -118,7 +118,7 @@ namespace RUVoice
         // update Pitch DB
         public static bool UpdatePitchDB()
         {
-            var writer = File.AppendText(Main.path + pathAudio + pitchDBFile);
+            var writer = File.AppendText(Main.pathMod + pitchDBFile);
             List<CharacterComponent> currentChars = Game.World.GetAllCharacters();
             foreach (CharacterComponent iChar in currentChars)
             {
@@ -144,7 +144,7 @@ namespace RUVoice
         // check if file exists
         public static bool CheckFile(string text)
         {
-            return File.Exists(Main.path + Main.pathAudio + text + ".ogg");
+            return File.Exists(Main.pathMod + Main.pathAudio + text + ".ogg");
         }
 
         // convert text to key
